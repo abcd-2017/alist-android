@@ -1,4 +1,4 @@
-package com.android.alist.network.Api
+package com.android.alist.network.api
 
 import com.android.alist.network.annotation.RequireAuthorization
 import com.android.alist.network.entity.ResponseData
