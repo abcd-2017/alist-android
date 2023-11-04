@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 
+/**
+ * 存储工具
+ */
 object SharePreferenceUtils {
     private const val PREF_NAME = "alist-android"
 
@@ -56,12 +59,6 @@ object SharePreferenceUtils {
         }
         return data as T;
     }
-
-    fun getString(context: Context, key: String, defaultValue: String): String {
-        val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return sharedPreferences.getString(key, defaultValue) ?: defaultValue
-    }
-
 
     /**
      * 存放Int数据
@@ -153,7 +150,7 @@ object SharePreferenceUtils {
     /**
      * 取出Boolean数据
      */
-    private     fun getBooleanData(key: String, default: Boolean = false): Boolean =
+    private fun getBooleanData(key: String, default: Boolean = false): Boolean =
         runBlocking {
             return@runBlocking dataStore.data.map {
                 it[booleanPreferencesKey(key)] ?: default

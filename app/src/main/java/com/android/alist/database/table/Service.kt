@@ -16,6 +16,6 @@ data class Service(
     val ip: String,
     @ColumnInfo(name = "port", typeAffinity = ColumnInfo.INTEGER)
     val port: Int,
-    @ColumnInfo(name = "isDefault", typeAffinity = ColumnInfo.BINARY)
+    @ColumnInfo(name = "isDefault", typeAffinity = ColumnInfo.INTEGER)
     val isDefault: Int
 )

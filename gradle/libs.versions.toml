@@ -1,8 +1,8 @@
 [versions]
 agp = "8.1.2"
+androidx-room-compiler = "2.6.0-alpha01"
 com-google-dagger-hilt-android = "2.44"
 glide = "4.16.0"
-google-hilt-compiler = "2.44"
 kotlin = "1.9.0"
 core-ktx = "1.10.1"
 junit = "4.13.2"
@@ -15,16 +15,18 @@ retrofit = "2.9.0"
 converter-gson = "2.9.0"
 coil-compose = "2.4.0"
 room-runtime = "2.6.0-alpha01"
-room-compiler = "2.6.0-alpha01"
 room-ktx = "2.6.0-alpha01"
 datastore-preferences = "1.1.0-alpha03"
 datastore-preferences-core = "1.1.0-alpha03"
 hilt-android = "2.48.1"
+navigation-compose = "2.6.0-alpha08"
+material-icons-extended = "1.5.0"
+hilt-android-compiler = "2.48.1"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 dagger-hilt-android-v244 = { module = "com.google.dagger:hilt-android", version.ref = "com-google-dagger-hilt-android" }
-dagger-hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "google-hilt-compiler" }
+hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt-android-compiler" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
@@ -32,6 +34,7 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle-runtime-ktx" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "androidx-room-compiler" }
 ui = { group = "androidx.compose.ui", name = "ui" }
 ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -43,13 +46,13 @@ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = 
 converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "converter-gson" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil-compose" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room-runtime" }
-androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room-compiler" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room-ktx" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore-preferences" }
 androidx-datastore-preferences-core = { group = "androidx.datastore", name = "datastore-preferences-core", version.ref = "datastore-preferences-core" }
-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt-android" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "material-icons-extended" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-
+hiltAndroid = { id = "com.google.dagger.hilt.android", version.ref = "hilt-android" }

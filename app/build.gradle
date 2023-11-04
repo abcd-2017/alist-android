@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.hiltAndroid)
     id 'kotlin-kapt'
-    id 'com.google.dagger.hilt.android'
 }
 
 android {
@@ -35,6 +35,9 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    packagingOptions {
+        exclude 'META-INF/gradle/incremental.annotation.processors'
+    }
     buildFeatures {
         compose true
     }
@@ -62,10 +65,14 @@ dependencies {
     implementation libs.converter.gson
     implementation libs.coil.compose
     implementation libs.androidx.room.runtime
-    implementation libs.androidx.room.compiler
     implementation libs.androidx.room.ktx
+    implementation libs.hilt.android.compiler
+    kapt libs.room.compiler
+
     implementation libs.androidx.datastore.preferences
     implementation libs.androidx.datastore.preferences.core
+    implementation libs.androidx.navigation.compose
+    implementation libs.androidx.material.icons.extended
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.espresso.core
@@ -77,5 +84,5 @@ dependencies {
     implementation libs.glide
 
     implementation libs.dagger.hilt.android.v244
-    kapt libs.dagger.hilt.compiler
+    kapt libs.hilt.android.compiler
 }

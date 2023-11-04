@@ -9,7 +9,7 @@ import com.android.alist.database.dao.ServiceDao
 import com.android.alist.database.table.Service
 
 @Database(entities = [Service::class], version = 1, exportSchema = false)
-abstract class AppDatabase(val context: Context) : RoomDatabase() {
+abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         @SuppressLint("staticfieldleak")

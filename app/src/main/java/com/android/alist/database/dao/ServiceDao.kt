@@ -26,10 +26,10 @@ interface ServiceDao {
      */
     @Query(
         "update service set isDefault = case " +
-                "when id = :sId then :default else :notDefault end " +
+                "when id = :sId then :defaultValue else :notDefaultValue end " +
                 "where id = :sId "
     )
-    fun updateDefault(sId: Int, default: Int, notDefault: Int): List<Service>
+    fun updateDefault(sId: Int, defaultValue: Int, notDefaultValue: Int)
 
     /**
      * 插入服务
@@ -47,5 +47,5 @@ interface ServiceDao {
      * 删除服务
      */
     @Delete
-    fun deleteById(id: Int)
+    fun deleteById(service: Service)
 }
