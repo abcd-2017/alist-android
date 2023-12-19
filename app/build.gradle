@@ -61,13 +61,28 @@ dependencies {
     implementation libs.ui.graphics
     implementation libs.ui.tooling.preview
     implementation libs.material3
+    //网络请求框架
     implementation libs.retrofit
     implementation libs.converter.gson
+    //异步加载网络图片
     implementation libs.coil.compose
+    //数据库框架
     implementation libs.androidx.room.runtime
     implementation libs.androidx.room.ktx
-    implementation libs.hilt.android.compiler
+
+    implementation libs.androidx.constraintlayout.compose
+    //下拉刷新
+    implementation libs.accompanist.swiperefresh
+    implementation libs.androidx.material
+
     kapt libs.room.compiler
+    //自动注入
+    implementation libs.dagger.hilt.android.v244
+    implementation libs.hilt.android.compiler
+    implementation libs.androidx.hilt.navigation.compose
+    kapt libs.hilt.android.compiler
+    //辅助工具库,权限申请
+    implementation libs.accompanist.permissions
 
     implementation libs.androidx.datastore.preferences
     implementation libs.androidx.datastore.preferences.core
@@ -83,6 +98,4 @@ dependencies {
 
     implementation libs.glide
 
-    implementation libs.dagger.hilt.android.v244
-    kapt libs.hilt.android.compiler
 }

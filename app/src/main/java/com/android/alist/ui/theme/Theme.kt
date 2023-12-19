@@ -10,10 +10,12 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -57,8 +59,15 @@ fun AlistandroidTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            //设置状态栏和导航栏的颜色
+            window.statusBarColor =
+                if (darkTheme) Color.Black.toArgb() else Color.Transparent.toArgb()
+            window.navigationBarColor =
+                if (darkTheme) Color.Black.toArgb() else Color.Transparent.toArgb()
+            //当值为true时，状态栏字体颜色为黑色，否则为白色
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars =
+                !darkTheme
         }
     }
 

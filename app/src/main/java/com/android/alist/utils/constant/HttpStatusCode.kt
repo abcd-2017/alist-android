@@ -1,4 +1,4 @@
-package com.android.alist.utils
+package com.android.alist.utils.constant
 
 /**
  * http响应状态码

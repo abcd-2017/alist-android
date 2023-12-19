@@ -4,16 +4,13 @@ import android.content.Context
 import android.util.Log
 import com.android.alist.network.annotation.RequireAuthorization
 import com.android.alist.network.entity.ResponseData
-import com.android.alist.utils.Constant
-import com.android.alist.utils.HttpStatusCode
+import com.android.alist.utils.constant.AppConstant
+import com.android.alist.utils.constant.HttpStatusCode
 import com.android.alist.utils.SharePreferenceUtils
 import com.google.gson.Gson
 import okhttp3.Interceptor
-import okhttp3.MediaType
 import okhttp3.Response
 import okhttp3.ResponseBody
-import okhttp3.internal.http2.Http2
-import retrofit2.http.HTTP
 
 /**
  * 请求拦截器
@@ -30,7 +27,7 @@ class RequestInterceptor(private val context: Context) : Interceptor {
         val annotated = method?.annotations?.any { it is RequireAuthorization }
         var modifiedRequest = request
         if (annotated != null && annotated) {
-            val token = SharePreferenceUtils.getData(Constant.TOKEN, "")
+            val token = SharePreferenceUtils.getData(AppConstant.TOKEN, "")
 
             if (token.isBlank()) {
                 // TODO: 当token为空时，应该跳转到登陆界面

@@ -1,11 +1,9 @@
 package com.android.alist.utils
 
+import com.android.alist.utils.constant.AppConstant
 import java.io.IOException
-import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.SocketAddress
-import java.util.concurrent.TimeUnit
 
 /**
  * 网络工具
@@ -18,7 +16,7 @@ object NetworkUtils {
         val socket = Socket()
         val address = InetSocketAddress(ip, port)
         try {
-            socket.connect(address, Constant.REQUEST_TIMEOUT)
+            socket.connect(address, AppConstant.REQUEST_TIMEOUT)
         } catch (e: IOException) {
             return false
         } finally {

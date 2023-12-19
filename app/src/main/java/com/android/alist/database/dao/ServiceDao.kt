@@ -32,6 +32,12 @@ interface ServiceDao {
     fun updateDefault(sId: Int, defaultValue: Int, notDefaultValue: Int)
 
     /**
+     * 清除默认选中的服务
+     */
+    @Query("update service set isDefault = :defaultValue where isDefault = :notDefaultValue")
+    fun clearDefault(defaultValue: Int, notDefaultValue: Int)
+
+    /**
      * 插入服务
      */
     @Insert

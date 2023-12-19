@@ -1,4 +1,5 @@
 [versions]
+accompanist-permissions = "0.32.0"
 agp = "8.1.2"
 androidx-room-compiler = "2.6.0-alpha01"
 com-google-dagger-hilt-android = "2.44"
@@ -22,8 +23,13 @@ hilt-android = "2.48.1"
 navigation-compose = "2.6.0-alpha08"
 material-icons-extended = "1.5.0"
 hilt-android-compiler = "2.48.1"
+hilt-navigation-compose = "1.1.0-alpha01"
+constraintlayout-compose = "1.1.0-alpha09"
+accompanist-swiperefresh = "0.33.2-alpha"
+material = "1.5.0-alpha01"
 
 [libraries]
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 dagger-hilt-android-v244 = { module = "com.google.dagger:hilt-android", version.ref = "com-google-dagger-hilt-android" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt-android-compiler" }
@@ -51,6 +57,10 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 androidx-datastore-preferences-core = { group = "androidx.datastore", name = "datastore-preferences-core", version.ref = "datastore-preferences-core" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "material-icons-extended" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayout-compose" }
+accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanist-swiperefresh" }
+androidx-material = { group = "androidx.compose.material", name = "material", version.ref = "material" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
