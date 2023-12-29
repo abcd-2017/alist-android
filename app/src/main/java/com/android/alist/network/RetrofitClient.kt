@@ -11,17 +11,16 @@ import retrofit2.converter.gson.GsonConverterFactory
 /**
  * 网络请求工具
  */
-class RetrofitClient(context: Context, val serviceDao: ServiceDao) {
+class RetrofitClient(context: Context, private val serviceDao: ServiceDao) {
     private var baseurl: String = ""
         get() {
             val defaultService = serviceDao.queryDefault(AppConstant.Default.TRUE.value)
-            return "http://${defaultService.ip}/${defaultService.port}"
+            return "http://${defaultService.ip}:${defaultService.port}"
         }
 
     private val okHttpClient = OkHttpClient
         .Builder()
-        //请求拦截器
-        .addInterceptor(RequestInterceptor(context))
+        .addInterceptor(RequestInterceptor())
         .build();
 
     private fun getRetrofitClient(): Retrofit {

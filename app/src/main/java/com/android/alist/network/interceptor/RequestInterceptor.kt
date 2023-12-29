@@ -1,7 +1,7 @@
 package com.android.alist.network.interceptor
 
-import android.content.Context
 import android.util.Log
+import com.android.alist.App
 import com.android.alist.network.annotation.RequireAuthorization
 import com.android.alist.network.entity.ResponseData
 import com.android.alist.utils.constant.AppConstant
@@ -15,7 +15,7 @@ import okhttp3.ResponseBody
 /**
  * 请求拦截器
  */
-class RequestInterceptor(private val context: Context) : Interceptor {
+class RequestInterceptor() : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
 
@@ -30,7 +30,7 @@ class RequestInterceptor(private val context: Context) : Interceptor {
             val token = SharePreferenceUtils.getData(AppConstant.TOKEN, "")
 
             if (token.isBlank()) {
-                // TODO: 当token为空时，应该跳转到登陆界面
+                App.globalRequestBeforeCallback
             }
 
             modifiedRequest = request.newBuilder()
@@ -40,13 +40,13 @@ class RequestInterceptor(private val context: Context) : Interceptor {
 
         //2.根据请求结果判断用户token是否过期
         val response = chain.proceed(modifiedRequest)
-        Log.d("logs", "intercept: $response")
+        Log.d(AppConstant.APP_NAME, "intercept: $response")
 
         val responseBody = response.body?.string()
         val responseData = Gson().fromJson(responseBody, ResponseData::class.java)
         //当请求结果为401,跳转到登陆界面
         if (responseData.code == HttpStatusCode.Unauthorized.code) {
-            //TODO:当状态码为401，应该跳转到登陆界面
+            App.globalRequestAfterCallback(responseData)
         }
 
         return response.newBuilder()

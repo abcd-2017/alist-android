@@ -1,34 +1,26 @@
-package com.android.alist.ui.compose.login
+package com.android.alist.ui.compose.service
 
-import android.util.Log
-import android.widget.Toast
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotMutableState
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.alist.App
 import com.android.alist.database.table.Service
+import com.android.alist.network.RetrofitClient
+import com.android.alist.network.api.UserApi
+import com.android.alist.network.entity.ResponseData
+import com.android.alist.network.entity.auth.UserLoginEntity
+import com.android.alist.network.to.auth.LoginUser
 import com.android.alist.utils.constant.AppConstant
 import com.android.alist.utils.getLocalTime
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -67,7 +59,6 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
     val inputPort = mutableStateOf("")
     val inputUsername = mutableStateOf("")
     val inputPassword = mutableStateOf("")
-    val isDefault = mutableIntStateOf(AppConstant.Default.FALSE.value)
     val inputDescription = mutableStateOf("")
     val ipError = mutableStateOf(false)
     private val _serviceList = MutableStateFlow<List<Service>>(emptyList())
@@ -78,6 +69,25 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             getServerList()
+        }
+    }
+
+    //判断服务器是否可用
+    fun isAvailable(
+        resultProcessing: (user: ResponseData<UserLoginEntity>) -> Unit
+    ) {
+        clearDefaultValue()
+        val selectService = serviceDao.getServiceById(selectId.value)
+        selectService.lastConnected = AppConstant.Default.TRUE.value
+        serviceDao.update(selectService)
+        val userApi =
+            RetrofitClient(App.context, serviceDao).getRequestApi<UserApi>(UserApi::class.java)
+
+        viewModelScope.launch {
+            val userLogin = userApi.userLogin(
+                LoginUser(selectService.username, selectService.password)
+            )
+            resultProcessing(userLogin)
         }
     }
 
@@ -106,9 +116,9 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         inputPort.value = ""
         inputUsername.value = ""
         inputPassword.value = ""
-        isDefault.intValue = AppConstant.Default.FALSE.value
         inputDescription.value = ""
         ipError.value = false
+        selectId.value = -1
     }
 
     //添加服务
@@ -116,9 +126,6 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         defaultServiceSetValue()
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (currentService.value.isDefault == AppConstant.Default.TRUE.value) {
-                clearDefaultValue()
-            }
             serviceDao.insert(currentService.value)
             getServerList()
             clearService()
@@ -134,16 +141,23 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         return null
     }
 
-    fun updateService() {
-        defaultServiceSetValue()
-
-        viewModelScope.launch(Dispatchers.IO) {
-            if (currentService.value.isDefault == AppConstant.Default.TRUE.value) {
-                clearDefaultValue()
+    fun getLastConnectedService(): Service? {
+        serviceList.value.forEach { it ->
+            if (it.lastConnected == AppConstant.Default.TRUE.value) {
+                selectId.value = it.id!!
+                return it
             }
+        }
+        return null
+    }
+
+    fun updateService() {
+        viewModelScope.launch(Dispatchers.IO) {
+            defaultServiceSetValue()
             serviceDao.update(currentService.value)
             getServerList()
             clearService()
+            selectId.value = -1
         }
     }
 
@@ -165,7 +179,6 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
             inputUsername.value = service.username
             inputPassword.value = service.password
             inputDescription.value = service.description.toString()
-            isDefault.intValue = service.isDefault
             true
         }
     }
@@ -182,12 +195,12 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         if (inputPassword.value.isEmpty()) inputPassword.value = AppConstant.DEFAULT_PASSWORD
         if (inputPort.value.isEmpty()) inputPort.value = AppConstant.DEFAULT_PORT.toString()
 
-        if (showEditPop.value && selectId.value != -1)
-            currentService.value.id = selectId.value
+        if (showEditPop.value && selectId.value != -1) {
+            currentService.value = serviceDao.getServiceById(selectId.value)
+        }
         currentService.value.username = inputUsername.value
         currentService.value.password = inputPassword.value
         currentService.value.port = inputPort.value.toInt()
-        currentService.value.isDefault = isDefault.intValue
         currentService.value.ip = inputIp.value
         currentService.value.description = inputDescription.value
         currentService.value.updateDate = getLocalTime()
@@ -196,6 +209,5 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
     private fun clearService() {
         currentService.value =
             Service(null, "", 0, AppConstant.Default.FALSE.value, "", "", "", "")
-        isDefault.value = AppConstant.Default.FALSE.value
     }
 }

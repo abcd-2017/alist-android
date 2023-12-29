@@ -10,6 +10,12 @@ import com.android.alist.database.table.Service
 @Dao
 interface ServiceDao {
     /**
+     * 根据Id查询对应服务器
+     */
+    @Query("select * from service where id = :id")
+    fun getServiceById(id: Int): Service
+
+    /**
      * 查询所有alist服务信息
      */
     @Query("select * from service")
@@ -18,23 +24,23 @@ interface ServiceDao {
     /**
      * 查询默认选择的服务
      */
-    @Query("select * from service where isDefault = :isDefault")
+    @Query("select * from service where lastConnected = :isDefault")
     fun queryDefault(isDefault: Int): Service
 
     /**
      * 修改默认的服务
      */
     @Query(
-        "update service set isDefault = case " +
+        "update service set lastConnected = case " +
                 "when id = :sId then :defaultValue else :notDefaultValue end " +
                 "where id = :sId "
     )
-    fun updateDefault(sId: Int, defaultValue: Int, notDefaultValue: Int)
+    fun updateLastConnect(sId: Int, defaultValue: Int, notDefaultValue: Int)
 
     /**
      * 清除默认选中的服务
      */
-    @Query("update service set isDefault = :defaultValue where isDefault = :notDefaultValue")
+    @Query("update service set lastConnected = :defaultValue where lastConnected = :notDefaultValue")
     fun clearDefault(defaultValue: Int, notDefaultValue: Int)
 
     /**

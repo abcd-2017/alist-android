@@ -1,8 +1,6 @@
 package com.android.alist.ui.compose
 
-object PageConstant {
-    enum class LoginPage(val text: String) {
-        ManageServer("管理服务"),
-        Login("用户登陆")
-    }
+sealed class PageConstant(val text: String, val description: String) {
+    data object Service : PageConstant("Service", "服务器管理")
+    data object File : PageConstant("File", "首页文件管理")
 }

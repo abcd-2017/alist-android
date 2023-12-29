@@ -19,9 +19,9 @@ data class Service(
     //服务器端口
     @ColumnInfo(name = "port", typeAffinity = ColumnInfo.INTEGER)
     var port: Int,
-    //是否为默认服务器
-    @ColumnInfo(name = "isDefault", typeAffinity = ColumnInfo.INTEGER)
-    var isDefault: Int,
+    //上一次连接
+    @ColumnInfo(name = "lastConnected", typeAffinity = ColumnInfo.INTEGER)
+    var lastConnected: Int,
     //服务器描述
     @ColumnInfo(name = "description", typeAffinity = ColumnInfo.TEXT)
     var description: String?,

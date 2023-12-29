@@ -5,6 +5,8 @@ import com.android.alist.network.entity.ResponseData
 import com.android.alist.network.entity.auth.FAKeyEntity
 import com.android.alist.network.entity.auth.UserInfoEntity
 import com.android.alist.network.entity.auth.UserLoginEntity
+import com.android.alist.network.to.auth.LoginUser
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 
@@ -18,8 +20,7 @@ interface UserApi {
      */
     @POST("/api/auth/login")
     suspend fun userLogin(
-        username: String,
-        password: String
+        @Body user: LoginUser
     ): ResponseData<UserLoginEntity>
 
     @POST("/api/auth/login/hash")

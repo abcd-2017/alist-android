@@ -27,6 +27,8 @@ hilt-navigation-compose = "1.1.0-alpha01"
 constraintlayout-compose = "1.1.0-alpha09"
 accompanist-swiperefresh = "0.33.2-alpha"
 material = "1.5.0-alpha01"
+appcompat = "1.6.1"
+coil-svg = "2.5.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist-permissions" }
@@ -61,6 +63,8 @@ androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navig
 androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayout-compose" }
 accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanist-swiperefresh" }
 androidx-material = { group = "androidx.compose.material", name = "material", version.ref = "material" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil-svg" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

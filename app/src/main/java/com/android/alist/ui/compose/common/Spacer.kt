@@ -1,6 +1,7 @@
 package com.android.alist.ui.compose.common
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -21,7 +22,7 @@ fun RowSpacer(height: Int) {
 fun ColumnSpacer(width: Int) {
     Spacer(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxHeight()
             .width(width.dp)
     )
 }

@@ -1,4 +1,4 @@
-package com.android.alist.ui.compose.login
+package com.android.alist.ui.compose.service
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -62,7 +62,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -92,21 +91,23 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
+import com.android.alist.App
 import com.android.alist.database.table.Service
 import com.android.alist.state.ScreenState
+import com.android.alist.ui.compose.PageConstant
 import com.android.alist.ui.compose.common.AlistAlertDialog
 import com.android.alist.ui.compose.common.AlistDialog
 import com.android.alist.ui.compose.common.RowSpacer
 import com.android.alist.utils.BackHandler
 import com.android.alist.utils.NetworkUtils
+import com.android.alist.utils.SharePreferenceUtils
 import com.android.alist.utils.constant.AppConstant
 import com.android.alist.utils.convertTimeToDisplayString
 import com.android.alist.utils.dragTheActionTool
 import com.android.alist.utils.verifyAddress
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -117,7 +118,9 @@ import kotlin.math.roundToInt
 @Composable
 fun ServicePage(
     onBackPressedDispatcher: OnBackPressedDispatcher,
+    navController: NavHostController,
     context: Context = LocalContext.current,
+    changeService: Boolean,
     serviceViewModel: ServiceViewModel = hiltViewModel()
 ) {
     val keyBoard = LocalSoftwareKeyboardController.current
@@ -129,11 +132,102 @@ fun ServicePage(
         ScreenState.LANDSCAPE_SCREEN
     }
     val coroutineScope = rememberCoroutineScope()
+    //关闭服务器信息操作窗口方法
+    val closePage: () -> Unit = {
+        serviceViewModel.floatButtonState.value = false
+        serviceViewModel.showEditPop.value = false
+        keyBoard?.hide()
+        serviceViewModel.clearInput()
+    }
+
+    //添加或修改服务器信息方法
+    val updatePage: () -> Unit = {
+        if (verifyAddress(serviceViewModel.inputIp.value)) {
+            if (serviceViewModel.isAdd.value) {
+                serviceViewModel.addService()
+                Toast.makeText(context, "添加成功", Toast.LENGTH_LONG).show()
+                serviceViewModel.floatButtonState.value = false
+            } else {
+                serviceViewModel.updateService()
+                Toast.makeText(context, "修改成功", Toast.LENGTH_LONG).show()
+            }
+            serviceViewModel.showEditPop.value = false
+            serviceViewModel.clearInput()
+            keyBoard?.hide()
+        } else {
+            serviceViewModel.ipError.value = true
+            Toast.makeText(context, "ip地址格式错误", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    //连接服务器
+    val onLoadService: (service: Service?) -> Unit = { service ->
+        if (service == null) {
+            Toast.makeText(context, "参数异常", Toast.LENGTH_SHORT).show()
+            serviceViewModel.isLoading.value = false
+        } else {
+            coroutineScope.launch(Dispatchers.IO) {
+                if (NetworkUtils.isConnectable(service.ip, service.port)) {
+                    serviceViewModel.isAvailable() { response ->
+                        if (response.code == 200) {
+                            SharePreferenceUtils.saveData(
+                                AppConstant.TOKEN,
+                                response.data?.token
+                            )
+                            if (!changeService) {
+                                navController.popBackStack()
+                                navController.navigate(PageConstant.File.text)
+                            }
+                            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT)
+                                .show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "登录失败，${response.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                } else {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(context, "该服务器无法连接", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+
+                launch(Dispatchers.Main) {
+                    serviceViewModel.isLoading.value = false
+                }
+                serviceViewModel.clearInput()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        serviceViewModel.serviceList.collect { data ->
+            if (data.isNotEmpty()) {
+                //进入页面，判断上次连接的服务器是否可以继续使用，可以的话直接进入文件页面
+                if (!changeService &&
+                    SharePreferenceUtils.getData(AppConstant.TOKEN, "").isNotEmpty()
+                ) {
+                    onLoadService(serviceViewModel.getLastConnectedService())
+                }
+            }
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize()
     ) {
-        Scaffold() { paddingValues ->
+        Scaffold(
+            floatingActionButton = {
+                FloatingButtonContent(
+                    floatButtonState = serviceViewModel.floatButtonState,
+                    isAdd = serviceViewModel.isAdd,
+                    isEdit = serviceViewModel.showEditPop
+                )
+            }
+        ) { paddingValues ->
             //服务器列表
             ServiceList(
                 serviceList = serviceViewModel.serviceList.collectAsState().value,
@@ -170,99 +264,17 @@ fun ServicePage(
                 inputPort = serviceViewModel.inputPort,
                 inputUsername = serviceViewModel.inputUsername,
                 inputPassword = serviceViewModel.inputPassword,
-                inputIsDefault = serviceViewModel.isDefault,
                 inputDescription = serviceViewModel.inputDescription,
                 onBackPressedDispatcher = onBackPressedDispatcher,
                 ipError = serviceViewModel.ipError,
                 isLoading = serviceViewModel.isLoading,
-                onClick = {
-                    if (verifyAddress(serviceViewModel.inputIp.value)) {
-                        serviceViewModel.updateService()
-                        Toast.makeText(context, "修改成功", Toast.LENGTH_LONG).show()
-                        serviceViewModel.showEditPop.value = false
-
-                        serviceViewModel.clearInput()
-                        keyBoard?.hide()
-
-                    } else {
-                        serviceViewModel.ipError.value = true
-                        Toast.makeText(context, "ip地址格式错误", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onClosePage = {
-                    serviceViewModel.showEditPop.value = false
-                    keyBoard?.hide()
-                    serviceViewModel.clearInput()
-                },
+                onClick = updatePage,
+                onClosePage = closePage,
                 onRemove = { serviceViewModel.deleteService() },
                 onLoadingService = {
-                    val service = serviceViewModel.getServiceById()
-
-                    if (service == null) {
-                        Toast.makeText(context, "参数异常", Toast.LENGTH_SHORT).show()
-                        serviceViewModel.isLoading.value = false
-                    } else {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            var showText = ""
-
-                            delay(1000)
-
-                            if (NetworkUtils.isConnectable(service.ip, service.port)) {
-                                showText = "连接成功"
-                            } else {
-                                showText = "该服务器无法连接"
-                            }
-
-                            launch(Dispatchers.Main) {
-                                Toast.makeText(context, showText, Toast.LENGTH_SHORT).show()
-                                serviceViewModel.isLoading.value = false
-                            }
-                        }
-                    }
+                    onLoadService(serviceViewModel.getServiceById())
                 }
             )
-        }
-    }
-
-    //悬浮按钮，可展开成一个页面
-    if (!serviceViewModel.showEditPop.value) {
-        ConstraintLayout {
-            val floatButtonBox = createRef()
-
-            Box(modifier = Modifier.constrainAs(floatButtonBox) {
-                end.linkTo(parent.end)
-                bottom.linkTo(parent.bottom)
-            }) {
-                FloatingButtonContent(
-                    floatButtonState = serviceViewModel.floatButtonState,
-                    isAdd = serviceViewModel.isAdd,
-                    onBackPressedDispatcher = onBackPressedDispatcher,
-                    inputIp = serviceViewModel.inputIp,
-                    inputPort = serviceViewModel.inputPort,
-                    inputUsername = serviceViewModel.inputUsername,
-                    inputPassword = serviceViewModel.inputPassword,
-                    inputIsDefault = serviceViewModel.isDefault,
-                    inputDescription = serviceViewModel.inputDescription,
-                    ipError = serviceViewModel.ipError,
-                    onClick = {
-                        if (verifyAddress(serviceViewModel.inputIp.value)) {
-                            serviceViewModel.addService()
-                            Toast.makeText(context, "添加成功", Toast.LENGTH_LONG).show()
-
-                            serviceViewModel.floatButtonState.value = false
-                            serviceViewModel.clearInput()
-                            keyBoard?.hide()
-                        } else {
-                            serviceViewModel.ipError.value = true
-                            Toast.makeText(context, "ip地址格式错误", Toast.LENGTH_SHORT).show()
-                        }
-                    }, onClosePage = {
-                        serviceViewModel.floatButtonState.value = false
-                        keyBoard?.hide()
-                        serviceViewModel.clearInput()
-                    }
-                )
-            }
         }
     }
 }
@@ -282,7 +294,6 @@ fun ShowPop(
     inputPort: MutableState<String>,
     inputUsername: MutableState<String>,
     inputPassword: MutableState<String>,
-    inputIsDefault: MutableState<Int>,
     inputDescription: MutableState<String>,
     onBackPressedDispatcher: OnBackPressedDispatcher,
     ipError: MutableState<Boolean>,
@@ -313,7 +324,7 @@ fun ShowPop(
     }
 
     //修改服务器
-    AnimatedVisibility(visible = isEdit.value) {
+    if (isEdit.value) {
         Surface(color = MaterialTheme.colorScheme.background) {
             LevitationNewPage(
                 isAdd = isAdd,
@@ -322,7 +333,6 @@ fun ShowPop(
                 onBackPressedDispatcher = onBackPressedDispatcher,
                 inputUsername = inputUsername,
                 inputPassword = inputPassword,
-                inputIsDefault = inputIsDefault,
                 onClick = onClick,
                 inputDescription = inputDescription,
                 ipError = ipError,
@@ -371,16 +381,7 @@ fun ShowPop(
 fun FloatingButtonContent(
     floatButtonState: MutableState<Boolean>,
     isAdd: MutableState<Boolean>,
-    inputIp: MutableState<String>,
-    inputPort: MutableState<String>,
-    inputUsername: MutableState<String>,
-    inputPassword: MutableState<String>,
-    inputIsDefault: MutableState<Int>,
-    inputDescription: MutableState<String>,
-    ipError: MutableState<Boolean>,
-    onBackPressedDispatcher: OnBackPressedDispatcher,
-    onClick: () -> Unit,
-    onClosePage: () -> Unit
+    isEdit: MutableState<Boolean>
 ) {
     val transition =
         updateTransition(targetState = floatButtonState.value, "FloatButtonState")
@@ -453,6 +454,7 @@ fun FloatingButtonContent(
                             .height(boxHeight)
                             .background(MaterialTheme.colorScheme.primary)
                             .clickable {
+                                App.vibratorHelper.vibrateOnClick()
                                 floatButtonState.value = true
                                 isAdd.value = true
                             },
@@ -468,31 +470,16 @@ fun FloatingButtonContent(
             }
 
             AppConstant.ShowContentPage.Page.currentPage -> {
-                Box(
-                    modifier = Modifier
-                        .height(boxHeight)
-                        .width(boxWidth)
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    AnimatedVisibility(
-                        visible = boxHeight > currentHeight.value * .999f,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        LevitationNewPage(
-                            isAdd = isAdd,
-                            onBackPressedDispatcher = onBackPressedDispatcher,
-                            inputIp = inputIp,
-                            inputPort = inputPort,
-                            inputUsername = inputUsername,
-                            inputPassword = inputPassword,
-                            inputIsDefault = inputIsDefault,
-                            onClick = onClick,
-                            inputDescription = inputDescription,
-                            ipError = ipError,
-                            onClosePage = onClosePage
-                        )
-                    }
+                if (boxHeight > currentHeight.value * .999f && floatButtonState.value) {
+                    isEdit.value = true
+                }
+                if (!isEdit.value) {
+                    Box(
+                        modifier = Modifier
+                            .height(boxHeight)
+                            .width(boxWidth)
+                            .background(MaterialTheme.colorScheme.background)
+                    )
                 }
             }
         }
@@ -510,7 +497,6 @@ fun LevitationNewPage(
     inputPort: MutableState<String>,
     inputUsername: MutableState<String>,
     inputPassword: MutableState<String>,
-    inputIsDefault: MutableState<Int>,
     inputDescription: MutableState<String>,
     ipError: MutableState<Boolean>,
     onClick: () -> Unit,
@@ -689,29 +675,6 @@ fun LevitationNewPage(
                         maxLines = 3
                     )
 
-                    RowSpacer(10)
-
-                    Row(
-                        modifier = Modifier
-                            .width(400.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "默认服务器")
-
-                        Switch(
-                            checked = inputIsDefault.value == AppConstant.Default.TRUE.value,
-                            onCheckedChange = {
-                                inputIsDefault.value =
-                                    if (inputIsDefault.value == AppConstant.Default.TRUE.value) {
-                                        AppConstant.Default.FALSE.value
-                                    } else {
-                                        AppConstant.Default.TRUE.value
-                                    }
-                            }
-                        )
-                    }
-
                     RowSpacer(40)
 
                     Button(
@@ -873,11 +836,11 @@ fun ServiceCard(
     selectId: MutableIntState,
     setDefaultValue: (Service) -> Unit
 ) {
-    val containerColor = when (service.isDefault) {
+    val containerColor = when (service.lastConnected) {
         AppConstant.Default.TRUE.value -> MaterialTheme.colorScheme.tertiaryContainer
         else -> MaterialTheme.colorScheme.primaryContainer
     }
-    val textColor = when (service.isDefault) {
+    val textColor = when (service.lastConnected) {
         AppConstant.Default.TRUE.value -> MaterialTheme.colorScheme.onTertiaryContainer
         else -> MaterialTheme.colorScheme.onPrimaryContainer
     }
@@ -907,6 +870,7 @@ fun ServiceCard(
                             },
                             onLongPress = {
                                 //长按弹出选择菜单
+                                App.vibratorHelper.vibrateOnLongPress()
                                 dropDownState = true
                                 coroutineScope.launch {
                                     animatedOffset.snapTo(it)
@@ -963,6 +927,20 @@ fun ServiceCard(
                                 text = convertTimeToDisplayString(service.updateDate),
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                        }
+
+                        if (service.lastConnected == AppConstant.Default.TRUE.value) {
+                            Row(
+                                modifier = Modifier
+                                    .height(40.dp)
+                                    .padding(horizontal = 16.dp)
+                            ) {
+                                Text(
+                                    text = "最近使用",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                 }

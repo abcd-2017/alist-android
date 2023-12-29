@@ -3,9 +3,23 @@ package com.android.alist.utils
 import android.util.Log
 import com.android.alist.utils.constant.AppConstant
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+/**
+ *格式化时间为yyyy-MM-dd HH:mm:ss格式
+ */
+fun formatDateTime(inputDateTime: String): String {
+    val instant = Instant.ofEpochSecond(Instant.parse(inputDateTime).epochSecond)
+    val localDateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    return localDateTime.format(formatter)
+}
 
 fun convertTimeToDisplayString(time: String): String {
     val date = Date()
