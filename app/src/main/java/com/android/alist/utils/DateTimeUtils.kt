@@ -1,11 +1,7 @@
 package com.android.alist.utils
 
-import android.util.Log
-import com.android.alist.utils.constant.AppConstant
 import java.text.SimpleDateFormat
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Date
@@ -15,10 +11,17 @@ import java.util.Locale
  *格式化时间为yyyy-MM-dd HH:mm:ss格式
  */
 fun formatDateTime(inputDateTime: String): String {
-    val instant = Instant.ofEpochSecond(Instant.parse(inputDateTime).epochSecond)
-    val localDateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    return localDateTime.format(formatter)
+    return try {
+        val formatter = DateTimeFormatter.ISO_DATE_TIME
+        val zonedDateTime = ZonedDateTime.parse(inputDateTime, formatter)
+        val formattedDateTime = zonedDateTime.withNano(0) // 将纳秒部分设为0，忽略掉纳秒
+
+        val outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        formattedDateTime.format(outputFormatter)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        ""
+    }
 }
 
 fun convertTimeToDisplayString(time: String): String {

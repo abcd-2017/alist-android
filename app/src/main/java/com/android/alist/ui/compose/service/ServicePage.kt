@@ -55,7 +55,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -88,6 +87,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -99,6 +99,7 @@ import com.android.alist.state.ScreenState
 import com.android.alist.ui.compose.PageConstant
 import com.android.alist.ui.compose.common.AlistAlertDialog
 import com.android.alist.ui.compose.common.AlistDialog
+import com.android.alist.ui.compose.common.DropPopItem
 import com.android.alist.ui.compose.common.RowSpacer
 import com.android.alist.utils.BackHandler
 import com.android.alist.utils.NetworkUtils
@@ -106,7 +107,9 @@ import com.android.alist.utils.SharePreferenceUtils
 import com.android.alist.utils.constant.AppConstant
 import com.android.alist.utils.convertTimeToDisplayString
 import com.android.alist.utils.dragTheActionTool
+import com.android.alist.utils.getStoragePermissions
 import com.android.alist.utils.verifyAddress
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -114,6 +117,7 @@ import kotlin.math.roundToInt
 /**
  * 选择alist服务器页面
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun ServicePage(
@@ -132,6 +136,7 @@ fun ServicePage(
         ScreenState.LANDSCAPE_SCREEN
     }
     val coroutineScope = rememberCoroutineScope()
+    val storagePermissions = getStoragePermissions()
     //关闭服务器信息操作窗口方法
     val closePage: () -> Unit = {
         serviceViewModel.floatButtonState.value = false
@@ -142,7 +147,7 @@ fun ServicePage(
 
     //添加或修改服务器信息方法
     val updatePage: () -> Unit = {
-        if (verifyAddress(serviceViewModel.inputIp.value)) {
+        if (verifyAddress(serviceViewModel.inputIp.value.text)) {
             if (serviceViewModel.isAdd.value) {
                 serviceViewModel.addService()
                 Toast.makeText(context, "添加成功", Toast.LENGTH_LONG).show()
@@ -174,6 +179,10 @@ fun ServicePage(
                                 AppConstant.TOKEN,
                                 response.data?.token
                             )
+                            SharePreferenceUtils.saveData(
+                                AppConstant.DEFAULT_SERVER,
+                                "http://${service.ip}:${service.port}"
+                            )
                             if (!changeService) {
                                 navController.popBackStack()
                                 navController.navigate(PageConstant.File.text)
@@ -204,6 +213,8 @@ fun ServicePage(
     }
 
     LaunchedEffect(Unit) {
+        //权限申请
+        storagePermissions.launchMultiplePermissionRequest()
         serviceViewModel.serviceList.collect { data ->
             if (data.isNotEmpty()) {
                 //进入页面，判断上次连接的服务器是否可以继续使用，可以的话直接进入文件页面
@@ -290,11 +301,11 @@ fun ShowPop(
     selectId: MutableIntState,
     context: Context,
     isAdd: MutableState<Boolean>,
-    inputIp: MutableState<String>,
-    inputPort: MutableState<String>,
-    inputUsername: MutableState<String>,
-    inputPassword: MutableState<String>,
-    inputDescription: MutableState<String>,
+    inputIp: MutableState<TextFieldValue>,
+    inputPort: MutableState<TextFieldValue>,
+    inputUsername: MutableState<TextFieldValue>,
+    inputPassword: MutableState<TextFieldValue>,
+    inputDescription: MutableState<TextFieldValue>,
     onBackPressedDispatcher: OnBackPressedDispatcher,
     ipError: MutableState<Boolean>,
     onClick: () -> Unit,
@@ -305,16 +316,18 @@ fun ShowPop(
 ) {
     //删除服务器弹出窗
     AlistDialog(isShowPop = isRemove) {
-        AlistAlertDialog(confirmCLick = {
-            if (selectId.value == -1) {
-                Toast.makeText(context, "参数异常", Toast.LENGTH_SHORT).show()
+        AlistAlertDialog(
+            title = { Text(text = "提示") },
+            confirmCLick = {
+                if (selectId.value == -1) {
+                    Toast.makeText(context, "参数异常", Toast.LENGTH_SHORT).show()
 
-            } else {
-                onRemove()
-                Toast.makeText(context, "删除成功", Toast.LENGTH_SHORT).show()
-            }
-            isRemove.value = false
-        },
+                } else {
+                    onRemove()
+                    Toast.makeText(context, "删除成功", Toast.LENGTH_SHORT).show()
+                }
+                isRemove.value = false
+            },
             dismissClick = {
                 selectId.value = -1
                 isRemove.value = false
@@ -344,6 +357,7 @@ fun ShowPop(
     //是否连接该服务器
     AlistDialog(isShowPop = isConnect) {
         AlistAlertDialog(
+            title = { Text(text = "提示") },
             confirmCLick = {
                 isLoading.value = true
                 isConnect.value = false
@@ -493,11 +507,11 @@ fun FloatingButtonContent(
 fun LevitationNewPage(
     isAdd: MutableState<Boolean>,
     onBackPressedDispatcher: OnBackPressedDispatcher,
-    inputIp: MutableState<String>,
-    inputPort: MutableState<String>,
-    inputUsername: MutableState<String>,
-    inputPassword: MutableState<String>,
-    inputDescription: MutableState<String>,
+    inputIp: MutableState<TextFieldValue>,
+    inputPort: MutableState<TextFieldValue>,
+    inputUsername: MutableState<TextFieldValue>,
+    inputPassword: MutableState<TextFieldValue>,
+    inputDescription: MutableState<TextFieldValue>,
     ipError: MutableState<Boolean>,
     onClick: () -> Unit,
     onClosePage: () -> Unit
@@ -564,14 +578,15 @@ fun LevitationNewPage(
                     OutlinedTextField(
                         value = inputIp.value,
                         onValueChange = {
-                            if (it == "") {
+                            val text = it.text
+                            if (text == "") {
                                 inputIp.value = it
-                            } else if (it[it.length - 1].isDigit() || it[it.length - 1] == '.') {
+                            } else if (text[text.length - 1].isDigit() || text[text.length - 1] == '.') {
                                 inputIp.value = it
                             }
 
                             if (ipError.value) {
-                                ipError.value = !verifyAddress(it)
+                                ipError.value = !verifyAddress(text)
                             }
                         },
                         label = { Text(text = "IP") },
@@ -583,7 +598,7 @@ fun LevitationNewPage(
                         isError = ipError.value,
                         keyboardActions = KeyboardActions(
                             onNext = {
-                                ipError.value = if (verifyAddress(inputIp.value)) {
+                                ipError.value = if (verifyAddress(inputIp.value.text)) {
                                     portFocusRequester.requestFocus()
                                     false
                                 } else {
@@ -605,7 +620,8 @@ fun LevitationNewPage(
                     OutlinedTextField(
                         value = inputPort.value,
                         onValueChange = {
-                            if (it[it.length - 1].isDigit() && it.toInt() <= AppConstant.MAX_PORT) {
+                            val text = it.text
+                            if (text[text.length - 1].isDigit() && text.toInt() <= AppConstant.MAX_PORT) {
                                 inputPort.value = it
                             }
                         },
@@ -980,23 +996,5 @@ fun ServiceCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun DropPopItem(
-    text: String,
-    onClick: () -> Unit
-) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-        DropdownMenuItem(
-            text = {
-                Text(
-                    text = text,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            },
-            onClick = onClick,
-        )
     }
 }

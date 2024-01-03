@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.alist.App
@@ -55,11 +57,11 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         private set
 
     //输入框内容
-    val inputIp = mutableStateOf("")
-    val inputPort = mutableStateOf("")
-    val inputUsername = mutableStateOf("")
-    val inputPassword = mutableStateOf("")
-    val inputDescription = mutableStateOf("")
+    val inputIp = mutableStateOf(TextFieldValue())
+    val inputPort = mutableStateOf(TextFieldValue())
+    val inputUsername = mutableStateOf(TextFieldValue())
+    val inputPassword = mutableStateOf(TextFieldValue())
+    val inputDescription = mutableStateOf(TextFieldValue())
     val ipError = mutableStateOf(false)
     private val _serviceList = MutableStateFlow<List<Service>>(emptyList())
     val serviceList = _serviceList.asStateFlow()
@@ -112,11 +114,11 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
 
     //清除input输入内容
     fun clearInput() {
-        inputIp.value = ""
-        inputPort.value = ""
-        inputUsername.value = ""
-        inputPassword.value = ""
-        inputDescription.value = ""
+        inputIp.value = TextFieldValue()
+        inputPort.value = TextFieldValue()
+        inputUsername.value = TextFieldValue()
+        inputPassword.value = TextFieldValue()
+        inputDescription.value = TextFieldValue()
         ipError.value = false
         selectId.value = -1
     }
@@ -174,11 +176,27 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
         return if (service.id != selectId.value) {
             false
         } else {
-            inputIp.value = service.ip
-            inputPort.value = service.port.toString()
-            inputUsername.value = service.username
-            inputPassword.value = service.password
-            inputDescription.value = service.description.toString()
+            inputIp.value =
+                TextFieldValue(text = service.ip, selection = TextRange(service.ip.length))
+            inputPort.value = TextFieldValue(
+                text = "${service.port}",
+                selection = TextRange("${service.port}".length)
+            )
+            inputUsername.value = TextFieldValue(
+                text = service.username,
+                selection = TextRange(service.username.length)
+            )
+            inputPassword.value =
+                TextFieldValue(
+                    text = service.password,
+                    selection = TextRange(service.password.length)
+                )
+            val description = service.description.toString()
+            inputDescription.value =
+                TextFieldValue(
+                    text = description,
+                    selection = TextRange(description.length)
+                )
             true
         }
     }
@@ -191,18 +209,19 @@ class ServiceViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun defaultServiceSetValue() {
-        if (inputUsername.value.isEmpty()) inputUsername.value = AppConstant.DEFAULT_USERNAME
-        if (inputPassword.value.isEmpty()) inputPassword.value = AppConstant.DEFAULT_PASSWORD
-        if (inputPort.value.isEmpty()) inputPort.value = AppConstant.DEFAULT_PORT.toString()
+        currentService.value.username =
+            inputUsername.value.text.ifEmpty { AppConstant.DEFAULT_USERNAME }
+        currentService.value.password =
+            inputPassword.value.text.ifEmpty { AppConstant.DEFAULT_PASSWORD }
+        currentService.value.port =
+            inputPort.value.text.ifEmpty { AppConstant.DEFAULT_PORT.toString() }.toInt()
 
         if (showEditPop.value && selectId.value != -1) {
             currentService.value = serviceDao.getServiceById(selectId.value)
         }
-        currentService.value.username = inputUsername.value
-        currentService.value.password = inputPassword.value
-        currentService.value.port = inputPort.value.toInt()
-        currentService.value.ip = inputIp.value
-        currentService.value.description = inputDescription.value
+
+        currentService.value.ip = inputIp.value.text
+        currentService.value.description = inputDescription.value.text
         currentService.value.updateDate = getLocalTime()
     }
 

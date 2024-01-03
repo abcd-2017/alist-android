@@ -13,7 +13,7 @@ data class File(
     val modified: String,
     val name: String,
     val sign: String,
-    val size: Int,
+    val size: Long,
     val thumb: String,
     val type: Int
 )

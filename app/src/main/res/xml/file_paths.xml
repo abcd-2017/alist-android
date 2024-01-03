@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外部存储器中的特定文件夹 -->
+    <external-path
+        name="my_files"
+        path="Download/" />
+    <!-- 如果还有其他文件路径需要共享，可以在这里添加 -->
+</paths>

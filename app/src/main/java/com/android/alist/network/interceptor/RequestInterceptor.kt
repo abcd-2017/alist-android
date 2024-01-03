@@ -43,10 +43,12 @@ class RequestInterceptor() : Interceptor {
         Log.d(AppConstant.APP_NAME, "intercept: $response")
 
         val responseBody = response.body?.string()
-        val responseData = Gson().fromJson(responseBody, ResponseData::class.java)
-        //当请求结果为401,跳转到登陆界面
-        if (responseData.code == HttpStatusCode.Unauthorized.code) {
-            App.globalRequestAfterCallback(responseData)
+        if (annotated != null && annotated) {
+            val responseData = Gson().fromJson(responseBody, ResponseData::class.java)
+            //当请求结果为401,跳转到登陆界面
+            if (responseData.code == HttpStatusCode.Unauthorized.code) {
+                App.globalRequestAfterCallback(responseData)
+            }
         }
 
         return response.newBuilder()

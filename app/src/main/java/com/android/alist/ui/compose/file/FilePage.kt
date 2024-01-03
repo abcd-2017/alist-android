@@ -1,10 +1,21 @@
 package com.android.alist.ui.compose.file
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,26 +25,35 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DensityMedium
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.FileCopy
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -41,9 +61,15 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,16 +90,39 @@ import coil.compose.rememberAsyncImagePainter
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.android.alist.network.entity.fs.File
-import com.android.alist.ui.compose.common.RowSpacer
 import com.android.alist.utils.FileUtils
 import com.android.alist.utils.constant.AppConstant
 import com.android.alist.utils.constant.ScreenWidthConstant
 import com.android.alist.utils.formatDateTime
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.IntOffset
+import com.android.alist.App
+import com.android.alist.ui.compose.common.AlistAlertDialog
+import com.android.alist.ui.compose.common.AlistDialog
+import com.android.alist.ui.compose.common.DropPopItem
 import com.android.alist.utils.BackHandler
+import com.android.alist.utils.constant.HttpStatusCode
+import com.android.alist.utils.getStoragePermissions
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun FilePage(
     navController: NavHostController,
@@ -83,6 +132,14 @@ fun FilePage(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val fileListState = fileViewModel.fileList.collectAsState()
+    val fileScrollState = rememberLazyListState()
+    val pathScrollState = rememberLazyListState()
+    val context = LocalContext.current
+    //获取存储权限
+    val storagePermission = getStoragePermissions()
+    val snackBarHostState = remember {
+        SnackbarHostState()
+    }
     LaunchedEffect(Unit) {
         fileViewModel.initParam(navController)
     }
@@ -92,6 +149,18 @@ fun FilePage(
             fileViewModel.getFileList()
         }
     }
+    // 定义启动 Activity 的结果处理器
+    val launcher: ManagedActivityResultLauncher<Intent, ActivityResult> =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) { }
+
+    // 打开权限设置页面的方法
+    fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        intent.data = android.net.Uri.fromParts("package", context.packageName, null)
+        launcher.launch(intent)
+    }
 
     FilePageContent(
         drawerState = drawerState,
@@ -99,19 +168,157 @@ fun FilePage(
         fileList = fileListState,
         isRefresh = fileViewModel.isRefresh,
         pathList = fileViewModel.pathList,
+        fileScrollState = fileScrollState,
+        pathScrollState = pathScrollState,
+        snackBarHostState = snackBarHostState,
         pathCardClick = { index ->
-            fileViewModel.pathList.removeRange(index, fileViewModel.pathList.size)
+            if (index == 0) fileViewModel.pathList.clear()
+            else fileViewModel.pathList.removeRange(index, fileViewModel.pathList.size)
             fileViewModel.getFileList()
         },
         fileRowOnClick = { file ->
             if (file.is_dir) {
-                fileViewModel.pathList.add(file.name)
-                fileViewModel.getFileList()
+                coroutineScope.launch {
+                    fileViewModel.pathList.add(file.name)
+                    fileViewModel.getFileList()
+                    pathScrollState.scrollToItem(fileViewModel.pathList.size - 1)
+                }
             }
         }, onRefresh = {
             fileViewModel.RefreshFileList()
+        },
+        fileRenameClick = { file ->
+            fileViewModel.editFileName.value =
+                TextFieldValue(text = file.name, selection = TextRange(file.name.length))
+            fileViewModel.selectFileOldName.value = file.name
+            fileViewModel.showEditFileName.value = true
+        }, fileCopyClick = { file ->
+
+        }, fileDownloadClick = { file ->
+            //申请权限
+            coroutineScope.launch {
+                if (!storagePermission.allPermissionsGranted) {
+                    val result = snackBarHostState.showSnackbar(
+                        message = "请授予文件的读写权限",
+                        withDismissAction = true,
+                        actionLabel = "授予",
+                        duration = SnackbarDuration.Indefinite
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        openAppSettings()
+                    }
+                } else {
+                    snackBarHostState.showSnackbar(
+                        message = "正在下载中...",
+                        withDismissAction = true
+                    )
+                    fileViewModel.downloadFile(context, file.name) {
+                        launch(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                it,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+        }, fileDeleteClick = { file ->
+            fileViewModel.selectFileOldName.value = file.name
+            fileViewModel.showDeleteFileName.value = true
         }
     )
+
+    //修改文件名
+    EditFileNameAlert(
+        showEditFileName = fileViewModel.showEditFileName,
+        editFileName = fileViewModel.editFileName,
+        onDismissRequest = {
+            fileViewModel.showEditFileName.value = false
+            fileViewModel.selectFileOldName.value = ""
+        },
+        doEditName = {
+            if (fileViewModel.editFileName.value.text.isEmpty()) {
+                Toast.makeText(context, "文件名不能为空", Toast.LENGTH_SHORT).show()
+            } else {
+                fileViewModel.updateFileName { result ->
+                    val showText =
+                        if (result.code == HttpStatusCode.Success.code) "修改成功" else "修改失败，${result.message}"
+
+                    Toast.makeText(context, showText, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    )
+
+    //删除文件名
+    AlistDialog(isShowPop = fileViewModel.showDeleteFileName) {
+        AlistAlertDialog(
+            confirmCLick = {
+                fileViewModel.deleteFile { result ->
+                    val showText =
+                        if (result.code == HttpStatusCode.Success.code) "删除成功" else "删除失败，${result.message}"
+
+                    Toast.makeText(context, showText, Toast.LENGTH_SHORT).show()
+                }
+            },
+            dismissClick = { fileViewModel.showDeleteFileName.value = false },
+            title = { Text(text = "提示", color = MaterialTheme.colorScheme.onBackground) }
+        ) {
+            Text(text = "确定要删除？", color = MaterialTheme.colorScheme.onBackground)
+        }
+    }
+}
+
+@Composable
+fun EditFileNameAlert(
+    showEditFileName: MutableState<Boolean>,
+    editFileName: MutableState<TextFieldValue>,
+    onDismissRequest: () -> Unit,
+    doEditName: () -> Unit
+) {
+    AlistDialog(isShowPop = showEditFileName) {
+        val focusRequester = remember {
+            FocusRequester()
+        }
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+
+        AlistAlertDialog(
+            dismissClick = onDismissRequest,
+            confirmCLick = doEditName,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "重命名", style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                TextField(
+                    value = editFileName.value,
+                    onValueChange = {
+                        editFileName.value = it
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Done
+                    ), keyboardActions = KeyboardActions(
+                        onDone = {
+                            doEditName()
+                        }),
+                    modifier = Modifier.focusRequester(focusRequester)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -121,9 +328,16 @@ fun FilePageContent(
     fileList: State<List<File>>,
     isRefresh: MutableState<Boolean>,
     pathList: SnapshotStateList<String>,
+    fileRenameClick: (file: File) -> Unit,
+    fileCopyClick: (file: File) -> Unit,
+    fileDeleteClick: (file: File) -> Unit,
+    fileDownloadClick: (file: File) -> Unit,
     pathCardClick: (index: Int) -> Unit,
     fileRowOnClick: (file: File) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    fileScrollState: LazyListState,
+    pathScrollState: LazyListState,
+    snackBarHostState: SnackbarHostState,
 ) {
     val configuration = LocalConfiguration.current
 
@@ -135,9 +349,16 @@ fun FilePageContent(
             fileList = fileList,
             isRefresh = isRefresh,
             pathList = pathList,
+            fileScrollState = fileScrollState,
+            pathScrollState = pathScrollState,
+            snackBarHostState = snackBarHostState,
             pathCardClick = pathCardClick,
             fileRowOnClick = fileRowOnClick,
-            onRefresh = onRefresh
+            fileCopyClick = fileCopyClick,
+            fileDownloadClick = fileDownloadClick,
+            fileRenameClick = fileRenameClick,
+            fileDeleteClick = fileDeleteClick,
+            onRefresh = onRefresh,
         )
     } else {
         PhonePage(
@@ -146,10 +367,17 @@ fun FilePageContent(
             coroutineScope = coroutineScope,
             fileList = fileList,
             isRefresh = isRefresh,
+            fileScrollState = fileScrollState,
+            pathScrollState = pathScrollState,
+            snackBarHostState = snackBarHostState,
             pathList = pathList,
             pathCardClick = pathCardClick,
+            fileCopyClick = fileCopyClick,
+            fileDownloadClick = fileDownloadClick,
+            fileRenameClick = fileRenameClick,
+            fileDeleteClick = fileDeleteClick,
             fileRowOnClick = fileRowOnClick,
-            onRefresh = onRefresh
+            onRefresh = onRefresh,
         )
     }
 }
@@ -163,9 +391,16 @@ fun PadPage(
     fileList: State<List<File>>,
     isRefresh: MutableState<Boolean>,
     pathList: SnapshotStateList<String>,
+    fileScrollState: LazyListState,
+    snackBarHostState: SnackbarHostState,
+    pathScrollState: LazyListState,
+    fileRenameClick: (file: File) -> Unit,
+    fileCopyClick: (file: File) -> Unit,
+    fileDeleteClick: (file: File) -> Unit,
+    fileDownloadClick: (file: File) -> Unit,
     pathCardClick: (index: Int) -> Unit,
     fileRowOnClick: (file: File) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
 ) {
     val width = Dp(
         if (configuration.screenWidthDp > configuration.screenHeightDp) {
@@ -194,8 +429,46 @@ fun PadPage(
                 topBar = {
                     TopAppBar(
                         backgroundColor = MaterialTheme.colorScheme.background,
-                        title = { Text("") }
+                        elevation = 0.dp,
+                        title = {
+                            Text(
+                                text = AppConstant.APP_NAME,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                                Icon(
+                                    imageVector = Icons.Default.DensityMedium,
+                                    contentDescription = null
+                                )
+                            }
+                        }, actions = {
+                            //操作拦图标
+                            IconButton(onClick = { /*TODO*/ }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CloudUpload,
+                                    contentDescription = null
+                                )
+                            }
+                            IconButton(onClick = { /*TODO*/ }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CreateNewFolder,
+                                    contentDescription = null
+                                )
+                            }
+                            IconButton(onClick = { /*TODO*/ }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MoreVert,
+                                    contentDescription = null
+                                )
+
+                            }
+                        }
                     )
+                },
+                snackbarHost = {
+                    SnackbarHost(hostState = snackBarHostState)
                 }
             ) { paddingValues ->
                 FileList(
@@ -203,9 +476,16 @@ fun PadPage(
                     fileList = fileList,
                     isRefresh = isRefresh,
                     pathList = pathList,
+                    fileScrollState = fileScrollState,
+                    pathScrollState = pathScrollState,
+                    coroutineScope = coroutineScope,
                     onClick = pathCardClick,
                     fileRowOnClick = fileRowOnClick,
-                    onRefresh = onRefresh
+                    fileCopyClick = fileCopyClick,
+                    fileDownloadClick = fileDownloadClick,
+                    fileRenameClick = fileRenameClick,
+                    fileDeleteClick = fileDeleteClick,
+                    onRefresh = onRefresh,
                 )
             }
         }
@@ -221,9 +501,16 @@ fun PhonePage(
     fileList: State<List<File>>,
     isRefresh: MutableState<Boolean>,
     pathList: SnapshotStateList<String>,
+    fileScrollState: LazyListState,
+    pathScrollState: LazyListState,
+    snackBarHostState: SnackbarHostState,
+    fileRenameClick: (file: File) -> Unit,
+    fileCopyClick: (file: File) -> Unit,
+    fileDeleteClick: (file: File) -> Unit,
+    fileDownloadClick: (file: File) -> Unit,
     pathCardClick: (index: Int) -> Unit,
     fileRowOnClick: (file: File) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
 ) {
     val width = Dp(
         if (configuration.screenWidthDp > configuration.screenHeightDp) {
@@ -245,33 +532,29 @@ fun PhonePage(
                 TopAppBar(
                     backgroundColor = MaterialTheme.colorScheme.background,
                     elevation = 0.dp,
-                    title = {
-                        Text(
-                            text = AppConstant.APP_NAME,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    },
-                    navigationIcon = {
-                        Icon(
-                            imageVector = Icons.Default.DensityMedium,
-                            contentDescription = null,
-                            Modifier.clickable {
-                                coroutineScope.launch { drawerState.open() }
-                            }
-                        )
-                    }, actions = {
+                    title = { }, actions = {
                         //操作拦图标
-                        Icon(imageVector = Icons.Outlined.CloudUpload, contentDescription = null)
-                        Spacer(modifier = Modifier.width(24.dp))
-                        Icon(
-                            imageVector = Icons.Outlined.CreateNewFolder,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(24.dp))
-                        Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = null)
-                        Spacer(modifier = Modifier.width(16.dp))
+                        IconButton(onClick = { /*TODO*/ }) {
+                            Icon(
+                                imageVector = Icons.Outlined.CloudUpload,
+                                contentDescription = null
+                            )
+                        }
+                        IconButton(onClick = { /*TODO*/ }) {
+                            Icon(
+                                imageVector = Icons.Outlined.CreateNewFolder,
+                                contentDescription = null
+                            )
+                        }
+                        IconButton(onClick = { /*TODO*/ }) {
+                            Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = null)
+
+                        }
                     }
                 )
+            },
+            snackbarHost = {
+                SnackbarHost(hostState = snackBarHostState)
             }
         ) { paddingValues ->
             FileList(
@@ -279,9 +562,16 @@ fun PhonePage(
                 fileList = fileList,
                 isRefresh = isRefresh,
                 pathList = pathList,
+                fileScrollState = fileScrollState,
+                pathScrollState = pathScrollState,
+                coroutineScope = coroutineScope,
                 onClick = pathCardClick,
                 fileRowOnClick = fileRowOnClick,
-                onRefresh = onRefresh
+                fileCopyClick = fileCopyClick,
+                fileDownloadClick = fileDownloadClick,
+                fileRenameClick = fileRenameClick,
+                fileDeleteClick = fileDeleteClick,
+                onRefresh = onRefresh,
             )
         }
     }
@@ -297,20 +587,25 @@ fun FileList(
     fileList: State<List<File>>,
     isRefresh: MutableState<Boolean>,
     pathList: SnapshotStateList<String>,
+    coroutineScope: CoroutineScope,
+    fileScrollState: LazyListState,
+    pathScrollState: LazyListState,
     onClick: (index: Int) -> Unit,
     fileRowOnClick: (file: File) -> Unit,
-    onRefresh: () -> Unit
+    fileRenameClick: (file: File) -> Unit,
+    fileCopyClick: (file: File) -> Unit,
+    fileDeleteClick: (file: File) -> Unit,
+    fileDownloadClick: (file: File) -> Unit,
+    onRefresh: () -> Unit,
 ) {
-    val fileScrollState = rememberLazyListState()
-    val pathScrollState = rememberLazyListState()
     val pullRefreshState =
         rememberPullRefreshState(isRefresh.value, onRefresh = onRefresh)
 
     Box(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
-            .fillMaxSize()
             .pullRefresh(pullRefreshState)
+            .fillMaxSize()
     ) {
         LazyColumn(state = fileScrollState) {
             //文件路径
@@ -323,7 +618,7 @@ fun FileList(
                                 PathCard(
                                     isLast = i == pathList.size - 1,
                                     pathName = it,
-                                    index = i,
+                                    index = i + 1,
                                     onClick = onClick
                                 )
                             }
@@ -335,7 +630,15 @@ fun FileList(
             if (fileList.value.isNotEmpty()) {
                 //文件内容管理
                 items(fileList.value) {
-                    FileRow(it, fileRowOnClick = fileRowOnClick)
+                    FileRow(
+                        it,
+                        coroutineScope = coroutineScope,
+                        fileCopyClick = fileCopyClick,
+                        fileDownloadClick = fileDownloadClick,
+                        fileRenameClick = fileRenameClick,
+                        fileDeleteClick = fileDeleteClick,
+                        fileRowOnClick = fileRowOnClick,
+                    )
                 }
             } else {
                 item {
@@ -383,10 +686,37 @@ fun DrawerContent(
 @Composable
 fun FileRow(
     file: File,
-    fileRowOnClick: (file: File) -> Unit
+    coroutineScope: CoroutineScope,
+    fileRowOnClick: (file: File) -> Unit,
+    fileRenameClick: (file: File) -> Unit,
+    fileCopyClick: (file: File) -> Unit,
+    fileDeleteClick: (file: File) -> Unit,
+    fileDownloadClick: (file: File) -> Unit,
 ) {
+    //是否显示下拉菜单
+    var dropDownState by remember {
+        mutableStateOf(false)
+    }
+    //手指点击位置的偏移量
+    val animatedOffset = remember {
+        Animatable(Offset(0f, 0f), Offset.VectorConverter)
+    }
+    val focusRequester = remember { FocusRequester() }
+
     Box(modifier = Modifier
-        .clickable { fileRowOnClick(file) }) {
+        .clickable { fileRowOnClick(file) }
+        .pointerInput(Unit) {
+            detectTapGestures(onLongPress = {
+                App.vibratorHelper.vibrateOnLongPress()
+                dropDownState = true
+                coroutineScope.launch {
+                    animatedOffset.snapTo(it)
+                }
+            }, onTap = {
+                fileRowOnClick(file)
+            })
+        }
+    ) {
         Row(
             Modifier
                 .wrapContentHeight()
@@ -410,12 +740,14 @@ fun FileRow(
 
             Column(
                 Modifier
-                    .padding(start = 10.dp),
+                    .padding(start = 10.dp, end = 10.dp)
+                    .weight(3f),
                 verticalArrangement = Arrangement.SpaceAround
             ) {
                 Text(
                     text = file.name,
                     color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
                     style = MaterialTheme.typography.bodyLarge
                 )
 
@@ -437,13 +769,68 @@ fun FileRow(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(.2f))
 
-            Icon(
-                modifier = Modifier
-                    .size(30.dp),
-                imageVector = Icons.Default.ChevronRight, contentDescription = null
+            if (file.is_dir) {
+                Icon(
+                    modifier = Modifier
+                        .size(30.dp),
+                    imageVector = Icons.Default.ChevronRight, contentDescription = null
+                )
+            }
+        }
+    }
+
+    //下拉菜单
+    Box(
+        modifier = Modifier.offset {
+            IntOffset(
+                animatedOffset.value.x.roundToInt(),
+                -animatedOffset.value.y.roundToInt() / 2
             )
+        }) {
+        DropdownMenu(
+            expanded = dropDownState,
+            onDismissRequest = { dropDownState = false }
+        ) {
+            DropPopItem(text = "重命名", onClick = {
+                fileRenameClick(file)
+                dropDownState = false
+            }) {
+                Icon(
+                    imageVector = Icons.Outlined.DriveFileRenameOutline,
+                    contentDescription = null
+                )
+            }
+            DropPopItem(text = "复制", onClick = {
+                fileCopyClick(file)
+                dropDownState = false
+            }) {
+                Icon(
+                    imageVector = Icons.Outlined.FileCopy,
+                    contentDescription = null
+                )
+            }
+            DropPopItem(text = "删除", onClick = {
+                fileDeleteClick(file)
+                dropDownState = false
+            }) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null
+                )
+            }
+            if (!file.is_dir) {
+                DropPopItem(text = "下载", onClick = {
+                    fileDownloadClick(file)
+                    dropDownState = false
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = null
+                    )
+                }
+            }
         }
     }
 }
@@ -461,8 +848,8 @@ fun PathCard(
         Box(
             modifier = Modifier
                 .background(if (isLast) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer)
-                .padding(16.dp, 4.dp)
                 .clickable { onClick(index) }
+                .padding(16.dp, 4.dp)
         ) {
             Text(
                 color = if (isLast) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,

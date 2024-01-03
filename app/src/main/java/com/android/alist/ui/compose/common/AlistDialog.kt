@@ -1,5 +1,6 @@
 package com.android.alist.ui.compose.common
 
+import androidx.appcompat.widget.DialogTitle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -42,11 +43,12 @@ fun AlistAlertDialog(
     confirmCLick: () -> Unit,
     dismissClick: () -> Unit,
     modifier: Modifier = Modifier,
+    title: @Composable (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = dismissClick,
-        title = { Text(text = "提示") },
+        title = title,
         confirmButton = {
             Button(confirmCLick) {
                 Text(text = "确定")

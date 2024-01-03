@@ -1,10 +1,12 @@
 package com.android.alist.utils
 
+import android.Manifest
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.android.alist.utils.constant.AppConstant
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
 /**
@@ -24,4 +26,14 @@ fun RequestPermissionsUtil(permissions: List<String>) {
             multiplePermissionsState.launchMultiplePermissionRequest()
         }
     }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun getStoragePermissions(): MultiplePermissionsState {
+    val permissionList = arrayListOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+    return rememberMultiplePermissionsState(permissions = permissionList)
 }

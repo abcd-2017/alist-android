@@ -17,8 +17,11 @@ import com.android.alist.network.to.fs.FsRemoveEmptyDirectoryTo
 import com.android.alist.network.to.fs.FsRemoveFileTo
 import com.android.alist.network.to.fs.FsRenameTo
 import com.android.alist.network.to.fs.FsSearchFileTo
+import okhttp3.ResponseBody
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 /**
  * fs Api请求接口
@@ -160,4 +163,12 @@ interface FsApi {
     suspend fun putUploadFile(
         @Body body: String
     ): ResponseData<Unit>
+
+    /**
+     * 下载文件
+     */
+    @GET("/d/{path}")
+    suspend fun downloadFile(
+        @Path("path") path: String
+    ): ResponseBody
 }

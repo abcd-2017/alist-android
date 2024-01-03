@@ -4,6 +4,8 @@ object AppConstant {
     const val APP_NAME = "alist"
 
     const val TOKEN = "user_token"
+    const val DEFAULT_DOWNLOAD_PATH = "default_download_path"
+    const val DEFAULT_SERVER = "default_server"
 
     const val MAX_PORT = 65535
     const val MIN_PORT = 0

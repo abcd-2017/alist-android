@@ -28,7 +28,7 @@ object FileUtils {
         }
     }
 
-    fun conversionFileSize(size: Int): String {
+    fun conversionFileSize(size: Long): String {
         val sizeUnit = arrayOf("B", "K", "M", "G", "T", "P")
         var index = 0
         var temp = size.toFloat()
