@@ -14,6 +14,7 @@ import com.android.alist.network.api.FsApi
 import com.android.alist.network.entity.ResponseData
 import com.android.alist.network.entity.fs.File
 import com.android.alist.network.to.fs.FsFileListTo
+import com.android.alist.network.to.fs.FsMkdirTo
 import com.android.alist.network.to.fs.FsRemoveFileTo
 import com.android.alist.network.to.fs.FsRenameTo
 import com.android.alist.utils.NetworkUtils
@@ -23,15 +24,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.InputStream
 import javax.inject.Inject
 
 @HiltViewModel
 class FileViewModel @Inject constructor() : ViewModel() {
     private lateinit var fsApi: FsApi
     private val serviceDao = App.db.getServiceDao()
-
-    //文件路径
-    val path = mutableStateOf("")
 
     //是否在刷新状态
     val isRefresh = mutableStateOf(false)
@@ -48,6 +47,9 @@ class FileViewModel @Inject constructor() : ViewModel() {
     //删除文件弹窗
     val showDeleteFileName = mutableStateOf(false)
 
+    //添加文件夹
+    val addFolder = mutableStateOf(false)
+
     //所有文件信息
     private var _fileList = MutableStateFlow<List<File>>(emptyList())
     var fileList = _fileList.asStateFlow()
@@ -59,6 +61,27 @@ class FileViewModel @Inject constructor() : ViewModel() {
 
             getFileList()
         }
+    }
+
+    //添加文件夹
+    suspend fun addFolder(callback: (result: ResponseData<Unit>) -> Unit) {
+        val responseData = fsApi.mkdirFile(FsMkdirTo("${getPath()}/${editFileName.value.text}"))
+        callback(responseData)
+
+        addFolder.value = false
+        getFileList()
+    }
+
+    //上传文件
+    suspend fun uploadFile(
+        file: InputStream,
+        fileName: String,
+        token: String,
+        callback: (message: String) -> Unit
+    ) {
+        NetworkUtils.uploadFile(file, fileName, token, getPath(), callback)
+
+        getFileList()
     }
 
     //下载文件

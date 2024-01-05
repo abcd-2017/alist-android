@@ -24,16 +24,23 @@ import okhttp3.MediaType
 import retrofit2.http.Url
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
 import java.net.URL
+import java.net.URLConnection
+import java.net.URLEncoder
 
 /**
  * 网络工具
@@ -146,6 +153,7 @@ object NetworkUtils {
                 output.flush()
                 output.close()
                 input.close()
+                urlConnection.disconnect()
 
                 // 创建 PendingIntent
                 val intent = Intent(Intent.ACTION_VIEW)
@@ -175,13 +183,84 @@ object NetworkUtils {
                 callback("下载成功")
             }
         } catch (e: Exception) {
-            Log.d(AppConstant.APP_NAME, "downloadFile: $e")
+            Log.e(AppConstant.APP_NAME, "downloadFile: $e")
             // 下载出错，更新通知栏
             callback("下载失败，${e.message}")
             notificationBuilder.setContentText("下载失败,${e.message}")
                 .setProgress(0, 0, false)
                 .setAutoCancel(true)
             notificationManager.notify(notificationId, notificationBuilder.build())
+        }
+    }
+
+    /**
+     * 上传文件
+     */
+    @OptIn(ExperimentalStdlibApi::class)
+    suspend fun uploadFile(
+        input: InputStream,
+        fileName: String,
+        token: String,
+        path: String,
+        callback: (message: String) -> Unit
+    ) {
+        val boundary = System.currentTimeMillis().toHexString()
+        val lineEnd = "\r\n"
+        val charset = "utf-8"
+
+        val defaultServer = SharePreferenceUtils.getData(AppConstant.DEFAULT_SERVER, "")
+        if (defaultServer.isEmpty()) return
+
+        withContext(Dispatchers.IO) {
+            val httpConnection =
+                URL("${defaultServer}/api/fs/form").openConnection() as HttpURLConnection
+            httpConnection.requestMethod = "PUT"
+            httpConnection.doOutput = true
+            httpConnection.setRequestProperty("Authorization", token)
+            httpConnection.setRequestProperty(
+                "Content-Type",
+                "multipart/form-data; boundary=$boundary"
+            )
+            httpConnection.setRequestProperty(
+                "File-Path",
+                URLEncoder.encode("$path/$fileName", charset)
+            )
+
+            try {
+                val outputStream = DataOutputStream(httpConnection.outputStream)
+
+                outputStream.writeBytes("--$boundary$lineEnd")
+                outputStream.writeBytes(
+                    "Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"$lineEnd"
+                )
+                outputStream.writeBytes("Content-Type: application/octet-stream$lineEnd")
+                outputStream.writeBytes("As-Task: false$lineEnd")
+                outputStream.writeBytes(lineEnd)
+
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+
+                outputStream.writeBytes(lineEnd)
+                outputStream.writeBytes("--$boundary--$lineEnd")
+
+                outputStream.flush()
+                outputStream.close()
+                input.close()
+
+                val responseCode = httpConnection.responseCode
+                if (responseCode == HttpStatusCode.Success.code) {
+                    callback("上传成功")
+                } else {
+                    callback("上传失败，${httpConnection.responseMessage}")
+                }
+                httpConnection.disconnect()
+            } catch (e: Exception) {
+                Log.e(AppConstant.APP_NAME, "uploadFile: $e")
+                callback("上传失败")
+            }
         }
     }
 

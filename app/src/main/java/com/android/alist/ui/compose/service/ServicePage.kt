@@ -183,10 +183,8 @@ fun ServicePage(
                                 AppConstant.DEFAULT_SERVER,
                                 "http://${service.ip}:${service.port}"
                             )
-                            if (!changeService) {
-                                navController.popBackStack()
-                                navController.navigate(PageConstant.File.text)
-                            }
+                            navController.popBackStack()
+                            navController.navigate(PageConstant.File.text)
                             Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT)
                                 .show()
                         } else {
