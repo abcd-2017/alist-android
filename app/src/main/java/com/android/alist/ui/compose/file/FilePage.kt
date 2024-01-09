@@ -1,10 +1,8 @@
 package com.android.alist.ui.compose.file
 
-import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.OnBackPressedDispatcher
@@ -49,7 +47,6 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DensityMedium
-import androidx.compose.material.icons.outlined.ChangeCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CreateNewFolder
@@ -69,10 +66,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,6 +108,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import com.android.alist.App
+import com.android.alist.R
 import com.android.alist.ui.compose.PageConstant
 import com.android.alist.ui.compose.common.AlistAlertDialog
 import com.android.alist.ui.compose.common.AlistDialog
@@ -124,10 +120,8 @@ import com.android.alist.utils.SharePreferenceUtils
 import com.android.alist.utils.constant.HttpStatusCode
 import com.android.alist.utils.getStoragePermissions
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import dagger.internal.codegen.base.MapType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -161,11 +155,6 @@ fun FilePage(
             coroutineScope.launch { drawerState.close() }
         }
     }
-    // 定义启动 Activity 的结果处理器
-    val permissionsLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.StartActivityForResult()
-        ) { }
     // 定义启动文件选择器的结果处理器
     val selectFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -205,13 +194,6 @@ fun FilePage(
         }
     )
 
-    // 打开权限设置页面的方法
-    fun openAppSettings() {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-        intent.data = android.net.Uri.fromParts("package", context.packageName, null)
-        permissionsLauncher.launch(intent)
-    }
-
     FilePageContent(
         drawerState = drawerState,
         coroutineScope = coroutineScope,
@@ -234,6 +216,12 @@ fun FilePage(
                     fileViewModel.getFileList()
                     pathScrollState.scrollToItem(fileViewModel.pathList.size - 1)
                 }
+            } else if (FileUtils.getSvgCodeByFileType(file.name) == R.drawable.filetype_image) {
+                SharePreferenceUtils.saveData(AppConstant.IMAGE_PATH, fileViewModel.getPath())
+                navController.navigate("${PageConstant.Image.text}/${file.name}")
+            } else if (FileUtils.getSvgCodeByFileType(file.name) == R.drawable.filetype_video) {
+                SharePreferenceUtils.saveData(AppConstant.IMAGE_PATH, fileViewModel.getPath())
+                navController.navigate("${PageConstant.Video.text}/${file.name}")
             }
         }, onRefresh = {
             fileViewModel.RefreshFileList()
@@ -248,15 +236,7 @@ fun FilePage(
             //申请权限
             coroutineScope.launch {
                 if (!storagePermission.allPermissionsGranted) {
-                    val result = snackBarHostState.showSnackbar(
-                        message = "请授予文件的读写权限",
-                        withDismissAction = true,
-                        actionLabel = "授予",
-                        duration = SnackbarDuration.Indefinite
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        openAppSettings()
-                    }
+                    storagePermission.launchMultiplePermissionRequest()
                 } else {
                     snackBarHostState.showSnackbar(
                         message = "正在下载中...",
@@ -845,19 +825,17 @@ fun FileRow(
     }
     val focusRequester = remember { FocusRequester() }
 
-    Box(modifier = Modifier
-        .clickable { fileRowOnClick(file) }
-        .pointerInput(Unit) {
-            detectTapGestures(onLongPress = {
-                App.vibratorHelper.vibrateOnLongPress()
-                dropDownState = true
-                coroutineScope.launch {
-                    animatedOffset.snapTo(it)
-                }
-            }, onTap = {
-                fileRowOnClick(file)
-            })
-        }
+    Box(
+        modifier = Modifier
+            .pointerInput(file) {
+                detectTapGestures(onLongPress = {
+                    App.vibratorHelper.vibrateOnLongPress()
+                    dropDownState = true
+                    coroutineScope.launch {
+                        animatedOffset.snapTo(it)
+                    }
+                }, onTap = { fileRowOnClick(file) })
+            }
     ) {
         Row(
             Modifier

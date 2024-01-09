@@ -6,6 +6,7 @@ object AppConstant {
     const val TOKEN = "user_token"
     const val DEFAULT_DOWNLOAD_PATH = "default_download_path"
     const val DEFAULT_SERVER = "default_server"
+    const val IMAGE_PATH = "image_path"
 
     const val MAX_PORT = 65535
     const val MIN_PORT = 0

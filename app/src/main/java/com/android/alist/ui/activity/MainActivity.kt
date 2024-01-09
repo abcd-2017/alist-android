@@ -1,6 +1,7 @@
 package com.android.alist.ui.activity
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +18,9 @@ import androidx.navigation.navArgument
 import com.android.alist.App
 import com.android.alist.ui.compose.PageConstant
 import com.android.alist.ui.compose.file.FilePage
+import com.android.alist.ui.compose.image.ImagePage
 import com.android.alist.ui.compose.service.ServicePage
+import com.android.alist.ui.compose.video.VideoPage
 import com.android.alist.ui.theme.AlistandroidTheme
 import com.android.alist.utils.SharePreferenceUtils
 import com.android.alist.utils.constant.AppConstant
@@ -90,6 +93,28 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(PageConstant.File.text) {
                             FilePage(navController, onBackPressedDispatcher)
+                        }
+                        composable(
+                            route = "${PageConstant.Image.text}/{ImagePath}",
+                            arguments = listOf(navArgument("ImagePath") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            })
+                        ) { backStackEntry ->
+                            val imagePath =
+                                backStackEntry.arguments?.getString("ImagePath").toString()
+                            ImagePage(navController, imagePath)
+                        }
+                        composable(
+                            route = "${PageConstant.Video.text}/{VideoName}",
+                            arguments = listOf(navArgument("VideoName") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            })
+                        ) { backStackEntry ->
+                            val videoName =
+                                backStackEntry.arguments?.getString("VideoName").toString()
+                            VideoPage(navController, videoName, onBackPressedDispatcher)
                         }
                     }
                 }
