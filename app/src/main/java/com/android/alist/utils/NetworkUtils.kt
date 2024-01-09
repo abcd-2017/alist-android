@@ -47,6 +47,32 @@ import java.net.URLEncoder
  */
 object NetworkUtils {
     /**
+     * 获取图片网络地址
+     */
+    suspend fun getImagePath(path: String, getPath: (String) -> Unit) {
+        try {
+            withContext(Dispatchers.IO) {
+                val defaultServer = SharePreferenceUtils.getData(AppConstant.DEFAULT_SERVER, "")
+                if (defaultServer.isEmpty()) return@withContext
+
+                val url = URL("$defaultServer/d$path")
+                val urlConnection = url.openConnection() as HttpURLConnection
+                urlConnection.requestMethod = "GET"
+                urlConnection.instanceFollowRedirects = false
+
+                val responseCode = urlConnection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode ==
+                    HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_SEE_OTHER
+                ) {
+                    getPath(urlConnection.getHeaderField("Location"))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(AppConstant.APP_NAME, "getImagePath: $e")
+        }
+    }
+
+    /**
      * 下载文件
      */
     suspend fun downloadFile(

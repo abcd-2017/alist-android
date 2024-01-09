@@ -618,9 +618,13 @@ fun LevitationNewPage(
                     OutlinedTextField(
                         value = inputPort.value,
                         onValueChange = {
-                            val text = it.text
-                            if (text[text.length - 1].isDigit() && text.toInt() <= AppConstant.MAX_PORT) {
+                            if (it.text.isBlank()) {
                                 inputPort.value = it
+                            } else {
+                                val text = it.text
+                                if (text[text.length - 1].isDigit() && text.toInt() <= AppConstant.MAX_PORT) {
+                                    inputPort.value = it
+                                }
                             }
                         },
                         placeholder = {
@@ -874,7 +878,7 @@ fun ServiceCard(
                 modifier = modifier
                     .padding(horizontal = 10.dp, vertical = 3.dp)
                     .wrapContentHeight()
-                    .pointerInput(Unit) {
+                    .pointerInput(service) {
                         //手势操作
                         detectTapGestures(
                             onTap = {
