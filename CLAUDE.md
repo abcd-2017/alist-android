@@ -91,6 +91,7 @@ UI (Compose) → ViewModel → Repository/DAO → Network (Retrofit) / Database 
 ## 代码约定
 
 - **语言**: 所有注释和文档使用中文
+- **对话语言**: 助手所有回复必须使用中文
 - **依赖注入**: 使用 Hilt，ViewModel 通过 `@HiltViewModel` 和 `hiltViewModel()` 获取
 - **异步**: 网络请求和数据库操作在 `Dispatchers.IO` 协程中执行，UI 更新切回主线程
 - **状态管理**: 使用 `MutableState` / `mutableStateOf` 管理 UI 状态，`collectAsState()` 收集 Flow

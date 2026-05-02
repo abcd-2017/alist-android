@@ -1,7 +1,6 @@
 package com.android.alist.network.entity.auth
 
 data class UserInfoEntity(
-    val Salt: String,
     val base_path: String,
     val disabled: Boolean,
     val id: Int,

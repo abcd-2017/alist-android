@@ -1,0 +1,32 @@
+package com.android.alist.network.entity.pub
+
+data class PublicSettingsEntity(
+    val allow_indexed: String?,
+    val allow_mounted: String?,
+    val announcement: String?,
+    val audio_autoplay: String?,
+    val audio_cover: String?,
+    val auto_update_index: String?,
+    val default_page_size: String?,
+    val external_previews: String?,
+    val favicon: String?,
+    val filename_char_mapping: String?,
+    val forward_direct_link_params: String?,
+    val hide_files: String?,
+    val home_container: String?,
+    val home_icon: String?,
+    val iframe_previews: String?,
+    val logo: String?,
+    val main_color: String?,
+    val ocr_api: String?,
+    val package_download: String?,
+    val pagination_type: String?,
+    val robots_txt: String?,
+    val search_index: String?,
+    val settings_layout: String?,
+    val site_title: String?,
+    val sso_login_enabled: String?,
+    val sso_login_platform: String?,
+    val version: String?,
+    val video_autoplay: String?
+)

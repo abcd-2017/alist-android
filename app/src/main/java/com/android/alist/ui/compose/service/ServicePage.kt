@@ -5,19 +5,10 @@ import android.content.Context
 import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.OnBackPressedDispatcher
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -38,6 +29,7 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.CircularProgressIndicator
@@ -75,10 +67,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -334,21 +329,52 @@ fun ShowPop(
         }
     }
 
-    //修改服务器
-    if (isEdit.value) {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            LevitationNewPage(
-                isAdd = isAdd,
-                inputIp = inputIp,
-                inputPort = inputPort,
-                onBackPressedDispatcher = onBackPressedDispatcher,
-                inputUsername = inputUsername,
-                inputPassword = inputPassword,
-                onClick = onClick,
-                inputDescription = inputDescription,
-                ipError = ipError,
-                onClosePage = onClosePage
-            )
+    //修改/添加服务器（容器变换：从 FAB 位置扩大到全屏 / 缩小回 FAB）
+    val configuration = LocalConfiguration.current
+    val startScale = 56f / configuration.screenWidthDp
+
+    val progress = remember { Animatable(0f) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isEdit.value) {
+        if (isEdit.value) {
+            isVisible = true
+            progress.snapTo(0f)
+            progress.animateTo(1f, tween(350))
+        } else if (isVisible) {
+            progress.animateTo(0f, tween(250))
+            isVisible = false
+        }
+    }
+
+    if (isVisible) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val scale = startScale + (1f - startScale) * progress.value
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(1f, 1f)
+                    alpha = progress.value.coerceIn(0f, 1f)
+                    clip = true
+                    shape = RoundedCornerShape(28.dp * (1f - progress.value))
+                }
+        ) {
+            Surface(color = MaterialTheme.colorScheme.background) {
+                LevitationNewPage(
+                    isAdd = isAdd,
+                    inputIp = inputIp,
+                    inputPort = inputPort,
+                    onBackPressedDispatcher = onBackPressedDispatcher,
+                    inputUsername = inputUsername,
+                    inputPassword = inputPassword,
+                    onClick = onClick,
+                    inputDescription = inputDescription,
+                    ipError = ipError,
+                    onClosePage = onClosePage
+                )
+            }
         }
     }
 
@@ -387,7 +413,7 @@ fun ShowPop(
 }
 
 /**
- * 悬浮按钮内容
+ * 悬浮按钮，表单显示时即移除，由容器变换动画接管视觉
  */
 @Composable
 fun FloatingButtonContent(
@@ -395,104 +421,30 @@ fun FloatingButtonContent(
     isAdd: MutableState<Boolean>,
     isEdit: MutableState<Boolean>
 ) {
-    val transition =
-        updateTransition(targetState = floatButtonState.value, "FloatButtonState")
-    val current = LocalConfiguration.current
-
-    val boxWidth by transition.animateDp(
-        transitionSpec = {
-            spring(
-                stiffness = Spring.StiffnessVeryLow
+    if (!isEdit.value) {
+        Card(
+            modifier = Modifier.padding(20.dp),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 6.dp, pressedElevation = 3.dp
             )
-        }, label = "width"
-    ) {
-        if (it) current.screenWidthDp.dp else 56.dp
-    }
-
-    val boxHeight by transition.animateDp(
-        transitionSpec = {
-            spring(
-                stiffness = Spring.StiffnessVeryLow
-            )
-        }, label = "height"
-    ) {
-        if (it) current.screenHeightDp.dp else 56.dp
-    }
-
-    val boxMargin by transition.animateDp(
-        transitionSpec = {
-            spring(stiffness = Spring.StiffnessVeryLow)
-        }, label = "boxMargin"
-    ) {
-        if (it) 0.dp else 20.dp
-    }
-
-    var currentPage by remember {
-        mutableStateOf(AppConstant.ShowContentPage.Control.currentPage)
-    }
-    val currentHeight = remember { mutableStateOf(current.screenHeightDp.dp) }
-
-    currentPage = if (
-        if (boxHeight > boxWidth) boxHeight < current.screenHeightDp.dp / 4
-        else boxWidth < current.screenWidthDp.dp / 4
-    ) {
-        AppConstant.ShowContentPage.Control.currentPage
-    } else {
-        AppConstant.ShowContentPage.Page.currentPage
-    }
-
-    AnimatedContent(
-        targetState = currentPage, label = "page",
-        transitionSpec = {
-            (fadeIn(animationSpec = tween(220, delayMillis = 90)) +
-                    scaleIn(
-                        initialScale = 0.92f,
-                        animationSpec = tween(220, delayMillis = 90)
-                    )
-                    ).togetherWith(fadeOut(animationSpec = tween(90)))
-        }
-    ) {
-        when (it) {
-            AppConstant.ShowContentPage.Control.currentPage -> {
-                Card(
-                    modifier = Modifier.padding(boxMargin),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 6.dp, pressedElevation = 3.dp
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(boxWidth)
-                            .height(boxHeight)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable {
-                                App.vibratorHelper.vibrateOnClick()
-                                floatButtonState.value = true
-                                isAdd.value = true
-                            },
-                        Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-            }
-
-            AppConstant.ShowContentPage.Page.currentPage -> {
-                if (boxHeight > currentHeight.value * .999f && floatButtonState.value) {
-                    isEdit.value = true
-                }
-                if (!isEdit.value) {
-                    Box(
-                        modifier = Modifier
-                            .height(boxHeight)
-                            .width(boxWidth)
-                            .background(MaterialTheme.colorScheme.background)
-                    )
-                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable {
+                        App.vibratorHelper.vibrateOnClick()
+                        floatButtonState.value = true
+                        isAdd.value = true
+                        isEdit.value = true
+                    },
+                Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     }

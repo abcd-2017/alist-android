@@ -7,9 +7,12 @@ data class FileInfoEntity(
     val provider: String,
     val raw_url: String,
     val readme: String,
-    val related: Any,
+    val related: Any?,
     val sign: String,
-    val size: Int,
+    val size: Long,
     val thumb: String,
-    val type: Int
+    val type: Int,
+    val created: String? = null,
+    val hash_info: String? = null,
+    val hashinfo: String? = null
 )

@@ -1,4 +1,4 @@
-package com.smartwash.utils
+package com.android.alist.utils
 
 import android.Manifest
 import android.util.Log
